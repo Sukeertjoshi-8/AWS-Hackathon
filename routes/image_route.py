@@ -135,7 +135,7 @@ async def check_image(file: UploadFile = File(...)):
         logger.exception("Claude analysis via analyze_text() failed.")
         raise HTTPException(
             status_code=502,
-            detail="AI analysis service is currently unavailable. Please try again later.",
+            detail=f"AI analysis service is currently unavailable: {str(exc)}",
         ) from exc
 
     # ── 7. Append OCR text to the response so the frontend can display it ────
