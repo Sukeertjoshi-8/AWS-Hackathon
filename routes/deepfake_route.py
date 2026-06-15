@@ -141,6 +141,33 @@ async def check_deepfake(file: UploadFile = File(...)):
             detail="File exceeds the 10 MB limit.",
         )
 
+    # Downscale and compress to avoid network timeouts & SightEngine upload overhead
+    import io
+    from PIL import Image
+    try:
+        image = Image.open(io.BytesIO(raw_bytes))
+        max_dim = 1200
+        if image.width > max_dim or image.height > max_dim:
+            ratio = min(max_dim / image.width, max_dim / image.height)
+            new_size = (int(image.width * ratio), int(image.height * ratio))
+            try:
+                resample_filter = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample_filter = Image.ANTIALIAS
+            image = image.resize(new_size, resample_filter)
+            
+            # Save back to bytes
+            out_bytes = io.BytesIO()
+            img_format = image.format if image.format else "JPEG"
+            if img_format in ("JPEG", "JPG"):
+                if image.mode in ("RGBA", "P"):
+                    image = image.convert("RGB")
+            image.save(out_bytes, format=img_format)
+            raw_bytes = out_bytes.getvalue()
+            logger.info(f"Deepfake image resized to {new_size} for fast transfer.")
+    except Exception as exc:
+        logger.warning(f"Could not downscale image, sending original: {str(exc)}")
+
     # ── 4. Call Sightengine REST API ──────────────────────────────────────────
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
