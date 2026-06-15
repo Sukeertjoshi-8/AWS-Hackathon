@@ -24,9 +24,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+
 # ── Register routers ───────────────────────────────────────────────────────────
 app.include_router(text_router)
-
 app.include_router(image_router)
 app.include_router(deepfake_router)
 
@@ -36,3 +37,8 @@ app.include_router(deepfake_router)
 def health():
     """Health check — used by Render to confirm the service is up."""
     return {"status": "ok", "service": "fakescope-backend"}
+
+
+# ── Serve Frontend UI ─────────────────────────────────────────────────────────
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
