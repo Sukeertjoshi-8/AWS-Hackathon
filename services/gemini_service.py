@@ -9,11 +9,23 @@ Usage (from any route file):
 """
 
 import asyncio
+from typing import Optional
 import json
 import os
 from google import genai
 
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+_client: Optional[genai.Client] = None
+
+
+def _get_client() -> "genai.Client":
+    """Lazy singleton — created on first call so .env is loaded first."""
+    global _client
+    if _client is None:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY is not set in environment.")
+        _client = genai.Client(api_key=api_key)
+    return _client
 
 _SCAM_PROMPT = """
 You are a scam detection expert for Indian users.
@@ -36,7 +48,7 @@ Reply in JSON only, no extra text, no markdown fences:
 
 def _call_gemini(prompt: str) -> dict:
     """Synchronous Gemini call (runs in a thread via async wrappers)."""
-    response = _client.models.generate_content(
+    response = _get_client().models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
     )
